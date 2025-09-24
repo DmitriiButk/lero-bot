@@ -1,6 +1,3 @@
-from typing import Any
-
-from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +7,6 @@ class Settings(BaseSettings):
 
     Атрибуты:
         BOT_TOKEN: Токен для телеграм-бота.
-        ADMIN_IDS: Список ID администраторов в Telegram.
         DB_HOST: Хост базы данных.
         DB_PORT: Порт базы данных.
         DB_USER: Пользователь базы данных.
@@ -19,19 +15,6 @@ class Settings(BaseSettings):
     """
 
     BOT_TOKEN: str
-    ADMIN_IDS: list[int] = Field(default=[])
-
-    @field_validator("ADMIN_IDS", mode="before")
-    @classmethod
-    def parse_admin_ids(cls, v: Any) -> list[int]:
-        """Парсит строку с ID администраторов, разделенную запятыми, в список чисел."""
-        if isinstance(v, str):
-            if not v.strip():
-                return []
-            return [int(i.strip()) for i in v.split(",")]
-        if isinstance(v, int):
-            return [v]
-        return v
 
     DB_HOST: str
     DB_PORT: int
@@ -48,4 +31,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

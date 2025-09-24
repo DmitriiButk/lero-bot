@@ -7,7 +7,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from FSM.add_product import AddCategoryStates
-from handlers.admin_handlers import IsAdmin
 from database.requests import add_category, delete_category, get_categories
 from keyboards.inline import (
     get_category_delete_keyboard,
@@ -18,7 +17,7 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 
-@router.message(F.text == "Управление категориями", IsAdmin())
+@router.message(F.text == "Управление категориями")
 @router.callback_query(F.data == "manage_categories")
 async def manage_categories_handler(update: Message | CallbackQuery, session: AsyncSession) -> None:
     """
@@ -45,7 +44,7 @@ async def start_add_category_handler(callback: CallbackQuery, state: FSMContext)
     await callback.answer()
 
 
-@router.message(AddCategoryStates.enter_name, IsAdmin())
+@router.message(AddCategoryStates.enter_name)
 async def enter_category_name_handler(message: Message, state: FSMContext, session: AsyncSession) -> None:
     """
     Обрабатывает ввод названия новой категории и сохраняет ее.

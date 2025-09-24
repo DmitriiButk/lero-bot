@@ -1,7 +1,7 @@
 import logging
 
 from aiogram import F, Router
-from aiogram.filters import Command, Filter
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.exc import IntegrityError
@@ -31,30 +31,18 @@ router = Router()
 logger = logging.getLogger(__name__)
 
 
-class IsAdmin(Filter):
-    """Кастомный фильтр для проверки, является ли пользователь администратором."""
-
-    async def __call__(self, message: Message) -> bool:
-        return message.from_user.id in settings.ADMIN_IDS
-
-
 @router.message(Command("admin"))
 async def admin_panel_handler(message: Message) -> None:
     """
     Обрабатывает команду /admin.
 
-    Отображает клавиатуру админ-панели для администраторов
-    или сообщение об отказе в доступе для остальных.
+    Отображает клавиатуру админ-панели.
     """
-    if message.from_user.id in settings.ADMIN_IDS:
-        logger.info("Администратор %d получил доступ к админ-панели", message.from_user.id)
-        await message.answer("Добро пожаловать в админ-панель!", reply_markup=get_admin_keyboard())
-    else:
-        logger.warning("Пользователь %d попытался получить доступ к админ-панели", message.from_user.id)
-        await message.answer("У вас нет доступа к админ-панели.")
+    logger.info("Пользователь %d получил доступ к админ-панели", message.from_user.id)
+    await message.answer("Добро пожаловать в админ-панель!", reply_markup=get_admin_keyboard())
 
 
-@router.message(F.text == "Добавить товар", IsAdmin())
+@router.message(F.text == "Добавить товар")
 async def start_add_product_handler(message: Message, state: FSMContext) -> None:
     """
     Запускает FSM для добавления нового товара.
@@ -63,7 +51,7 @@ async def start_add_product_handler(message: Message, state: FSMContext) -> None
     await message.answer("Введите название нового товара:")
 
 
-@router.message(F.text == "Список заказов", IsAdmin())
+@router.message(F.text == "Список заказов")
 async def list_orders_handler(message: Message, session: AsyncSession) -> None:
     """
     Отображает список всех заказов.
@@ -77,7 +65,7 @@ async def list_orders_handler(message: Message, session: AsyncSession) -> None:
         keyboard = get_orders_keyboard(orders)
         await message.answer("Список заказов:", reply_markup=keyboard)
     except Exception as e:
-        logger.error("Ошибка в list_orders_handler для администратора %d: %s", message.from_user.id, e)
+        logger.error("Ошибка в list_orders_handler для пользователя %d: %s", message.from_user.id, e)
         await message.answer("Не удалось загрузить список заказов.")
 
 
@@ -95,7 +83,7 @@ async def to_orders_handler(callback: CallbackQuery, session: AsyncSession) -> N
         keyboard = get_orders_keyboard(orders)
         await callback.message.edit_text("Список заказов:", reply_markup=keyboard)
     except Exception as e:
-        logger.error("Ошибка в to_orders_handler для администратора %d: %s", callback.from_user.id, e)
+        logger.error("Ошибка в to_orders_handler для пользователя %d: %s", callback.from_user.id, e)
         await callback.answer("Не удалось загрузить список заказов.", show_alert=True)
     finally:
         await callback.answer()
@@ -132,7 +120,7 @@ async def view_order_details_handler(callback: CallbackQuery, session: AsyncSess
         logger.warning("Неверные callback-данные для view_order_details: %s. Ошибка: %s", callback.data, e)
         await callback.answer("Произошла ошибка.", show_alert=True)
     except Exception as e:
-        logger.error("Ошибка в view_order_details_handler для администратора %d: %s", callback.from_user.id, e)
+        logger.error("Ошибка в view_order_details_handler для пользователя %d: %s", callback.from_user.id, e)
         await callback.answer("Не удалось загрузить детали заказа.", show_alert=True)
     finally:
         await callback.answer()
@@ -146,7 +134,7 @@ async def change_order_status_handler(callback: CallbackQuery, session: AsyncSes
     try:
         _, order_id_str, new_status = callback.data.split("_")
         order_id = int(order_id_str)
-        logger.info("Администратор %d изменил статус заказа %d на '%s'", callback.from_user.id, order_id, new_status)
+        logger.info("Пользователь %d изменил статус заказа %d на '%s'", callback.from_user.id, order_id, new_status)
 
         await update_order_status(session, order_id, new_status)
         await callback.answer(f"Статус заказа №{order_id} изменен на '{new_status}'.")
@@ -171,7 +159,7 @@ async def change_order_status_handler(callback: CallbackQuery, session: AsyncSes
         logger.warning("Неверные callback-данные для change_order_status: %s. Ошибка: %s", callback.data, e)
         await callback.answer("Произошла ошибка.", show_alert=True)
     except Exception as e:
-        logger.error("Ошибка в change_order_status_handler для администратора %d: %s", callback.from_user.id, e)
+        logger.error("Ошибка в change_order_status_handler для пользователя %d: %s", callback.from_user.id, e)
         await callback.answer("Не удалось изменить статус заказа.", show_alert=True)
 
 
@@ -203,10 +191,10 @@ async def enter_product_price_handler(message: Message, state: FSMContext, sessi
         keyboard = get_category_keyboard(categories, admin_mode=True)
         await message.answer("Теперь выберите категорию для товара:", reply_markup=keyboard)
     except ValueError:
-        logger.warning("Администратор %d ввел неверную цену: %s", message.from_user.id, message.text)
+        logger.warning("Пользователь %d ввел неверную цену: %s", message.from_user.id, message.text)
         await message.answer("Неверный формат цены. Пожалуйста, введите число.")
     except Exception as e:
-        logger.error("Ошибка в enter_product_price_handler для администратора %d: %s", message.from_user.id, e)
+        logger.error("Ошибка в enter_product_price_handler для пользователя %d: %s", message.from_user.id, e)
         await message.answer("Произошла ошибка. Попробуйте снова.")
 
 
@@ -220,19 +208,19 @@ async def select_product_category_handler(callback: CallbackQuery, state: FSMCon
         data = await state.get_data()
         await add_product(session, data)
         await callback.message.answer("Товар успешно добавлен!")
-        logger.info("Администратор %d успешно добавил новый товар: %s", callback.from_user.id, data['name'])
+        logger.info("Пользователь %d успешно добавил новый товар: %s", callback.from_user.id, data['name'])
         await state.clear()
     except (IndexError, ValueError) as e:
         logger.warning("Неверные callback-данные для select_product_category: %s. Ошибка: %s", callback.data, e)
         await callback.answer("Произошла ошибка.", show_alert=True)
     except Exception as e:
-        logger.error("Ошибка в select_product_category_handler для администратора %d: %s", callback.from_user.id, e)
+        logger.error("Ошибка в select_product_category_handler для пользователя %d: %s", callback.from_user.id, e)
         await callback.answer("Не удалось добавить товар. Попробуйте снова.", show_alert=True)
     finally:
         await callback.answer()
 
 
-@router.message(F.text == "Управление категориями", IsAdmin())
+@router.message(F.text == "Управление категориями")
 @router.callback_query(F.data == "manage_categories")
 async def manage_categories_handler(update: Message | CallbackQuery, session: AsyncSession) -> None:
     """
@@ -259,7 +247,7 @@ async def start_add_category_handler(callback: CallbackQuery, state: FSMContext)
     await callback.answer()
 
 
-@router.message(AddCategoryStates.enter_name, IsAdmin())
+@router.message(AddCategoryStates.enter_name)
 async def enter_category_name_handler(message: Message, state: FSMContext, session: AsyncSession) -> None:
     """
     Обрабатывает ввод названия новой категории и сохраняет ее.
